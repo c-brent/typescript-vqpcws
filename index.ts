@@ -1,19 +1,28 @@
-import { forkJoin, Observable, of } from "rxjs";
+import { combineLatest, forkJoin, Observable, of } from "rxjs";
 import { Subject } from "rxjs";
-import { concatMap, delay, mergeMap, take } from "rxjs/operators";
+import { concatMap, delay, filter, mergeMap, take } from "rxjs/operators";
 
 //emit delay value
-const first = of({ status: "OK", node: "SN" });
+const first = of({ status: "OK", node: "GN" });
 const second = of({ status: "OK", node: "CR" });
+
+const nodeByKey$ = of({ status: "OK", node: "SN" });
+const connected = of(false);
 
 const subject$ = new Observable();
 console.log("Start:");
 
 const obs: Observable<any>[] = [first, second];
-
 const test$ = forkJoin(obs);
 
-const sub = test$.subscribe(v => console.log(JSON.stringify(v)));
+const restart$ = combineLatest([nodeByKey$, connected]);
+const progress$ = restart$.pipe(
+  filter(([sysRestarted, sysConnected]) => sysRestarted && !sysConnected),
+  concatMap(() => test$),
+  concatMap(() => of({ progress: "10" }))
+);
+
+const sub = progress$.subscribe(v => console.log(JSON.stringify(v)));
 
 // const example = source.pipe(
 //   concatMap(val => of(`Delayed by: ${val}ms`).pipe(delay(val)))
